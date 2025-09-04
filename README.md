@@ -44,7 +44,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/SEU_USUARIO/metallb-gitops.git
+    repoURL: https://github.com/thiagobotelho/metallb-gitops.git
     targetRevision: main
     path: overlays/cluster
   destination:
@@ -127,4 +127,3 @@ Se configurado corretamente, o campo **EXTERNAL-IP** estará em algum IP do rang
 
 - [MetalLB Operator no OperatorHub](https://operatorhub.io/operator/metallb-operator)
 - [Documentação oficial do MetalLB](https://metallb.universe.tf/)
-- [OLM (Operator Lifecycle Manager)](https://olm.operatorframework.io/)
