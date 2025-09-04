@@ -8,6 +8,6 @@ metadata:
 spec:
   channel: stable
   name: metallb-operator
-  source: community-operators
+  source: redhat-operators
   sourceNamespace: openshift-marketplace
   installPlanApproval: Automatic
