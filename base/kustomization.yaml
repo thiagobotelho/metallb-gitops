@@ -7,4 +7,5 @@ resources:
   - subscription.yaml
   - metallb.yaml
   - addresspool.yaml
+  - addresspool-configurator.yaml
   - l2advertisement.yaml

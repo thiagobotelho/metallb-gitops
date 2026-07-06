@@ -8,5 +8,7 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   addresses:
-    - 192.168.130.200-192.168.130.250   # EXEMPLO – ajuste para sua rede L2
+    # Bootstrap value. The address-pool-configurator Job replaces the network
+    # prefix at runtime using the CRC node IP.
+    - 192.168.126.200-192.168.126.250
   autoAssign: true
