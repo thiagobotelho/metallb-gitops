@@ -8,7 +8,8 @@ metadata:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   addresses:
-    # Bootstrap value. The address-pool-configurator Job replaces the network
-    # prefix at runtime using the CRC node IP.
-    - 192.168.126.200-192.168.126.250
+    # Bootstrap documentation range (RFC 5737). In desenvolvimento/CRC the
+    # address-pool-configurator Job replaces the prefix at runtime using the
+    # node IP. For aceite/producao, patch this value with a reserved pool.
+    - 192.0.2.200-192.0.2.250
   autoAssign: true

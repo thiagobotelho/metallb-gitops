@@ -46,7 +46,7 @@ spec:
   source:
     repoURL: https://github.com/thiagobotelho/metallb-gitops.git
     targetRevision: main
-    path: overlays/cluster
+    path: overlays/desenvolvimento
   destination:
     server: https://kubernetes.default.svc
     namespace: metallb-system
@@ -127,3 +127,24 @@ Se configurado corretamente, o campo **EXTERNAL-IP** estará em algum IP do rang
 
 - [MetalLB Operator no OperatorHub](https://operatorhub.io/operator/metallb-operator)
 - [Documentação oficial do MetalLB](https://metallb.universe.tf/)
+
+## Ambientes e validação
+
+```bash
+oc kustomize overlays/desenvolvimento >/tmp/metallb-dev.yaml
+oc kustomize overlays/aceite >/tmp/metallb-aceite.yaml
+oc kustomize overlays/producao >/tmp/metallb-prod.yaml
+oc apply --dry-run=client -k overlays/desenvolvimento
+```
+
+A base usa range RFC 5737 como placeholder. No CRC, o Job
+`address-pool-configurator` calcula o prefixo a partir do IP do nó. Em aceite e
+produção, substitua `IPAddressPool.spec.addresses` por faixa reservada do
+ambiente e documente no IPAM. Veja `docs/AMBIENTES.md`.
+
+## Automatizações preservadas e ajustadas
+
+- Mantido `.github/workflows/validate.yml`, renderizando todos os
+  `kustomization.yaml` e executando `yamllint`.
+- Mantido Job `address-pool-configurator` para desenvolvimento/CRC.
+- Adicionados overlays padronizados `desenvolvimento`, `aceite` e `producao`.
