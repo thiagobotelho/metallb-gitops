@@ -19,7 +19,3 @@ Decisões:
 
 - A base usa faixa RFC 5737 (`192.0.2.0/24`) como placeholder seguro.
 - Em CRC, o Job patcha o `IPAddressPool` em runtime; o Argo ignora drift em `/spec/addresses`.
-
-Automação preservada:
-
-- `.github/workflows/validate.yml`: renderiza todos os Kustomizations e executa `yamllint`.

@@ -10,6 +10,20 @@ Este repositório provê os manifests necessários para:
 
 ---
 
+
+## Arquitetura
+
+```mermaid
+flowchart LR
+    SVC[Service type LoadBalancer] --> Pool[IPAddressPool]
+    Pool --> Adv[L2Advertisement]
+    Adv --> Speaker[MetalLB Speaker]
+    Controller[MetalLB Controller] --> Pool
+```
+
+O MetalLB fornece IP externo para Services `LoadBalancer`. No CRC o pool é
+ajustado dinamicamente; em aceite/produção deve vir de uma faixa reservada.
+
 ## 📂 Estrutura do Repositório
 
 ```bash
@@ -141,10 +155,3 @@ A base usa range RFC 5737 como placeholder. No CRC, o Job
 `address-pool-configurator` calcula o prefixo a partir do IP do nó. Em aceite e
 produção, substitua `IPAddressPool.spec.addresses` por faixa reservada do
 ambiente e documente no IPAM. Veja `docs/AMBIENTES.md`.
-
-## Automatizações preservadas e ajustadas
-
-- Mantido `.github/workflows/validate.yml`, renderizando todos os
-  `kustomization.yaml` e executando `yamllint`.
-- Mantido Job `address-pool-configurator` para desenvolvimento/CRC.
-- Adicionados overlays padronizados `desenvolvimento`, `aceite` e `producao`.
