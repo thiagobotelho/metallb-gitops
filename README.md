@@ -1,15 +1,9 @@
 # MetalLB GitOps
 
-Repositório GitOps para instalação e configuração do **MetalLB Operator** em clusters Kubernetes/OpenShift.  
-Este repositório provê os manifests necessários para:
-
-- Instalação do **MetalLB Operator** (via OLM).
-- Criação do **MetalLB Controller** e **Speaker**.
-- Definição de **IPAddressPool** para alocação de IPs externos.
-- Configuração de **L2Advertisement** para anúncios ARP/NDP.
-
----
-
+MetalLB Operator e configuração de `LoadBalancer` declarativos para
+OpenShift/Kubernetes. O perfil de desenvolvimento é compatível com
+OpenShift Local/CRC e calcula dinamicamente a faixa de IPs a partir da rede do
+nó local.
 
 ## Arquitetura
 
@@ -21,126 +15,57 @@ flowchart LR
     Controller[MetalLB Controller] --> Pool
 ```
 
-O MetalLB fornece IP externo para Services `LoadBalancer`. No CRC o pool é
-ajustado dinamicamente; em aceite/produção deve vir de uma faixa reservada.
+O MetalLB fornece IP externo para Services `LoadBalancer` em clusters que não
+possuem load balancer de nuvem. No CRC, o Job `address-pool-configurator`
+descobre a rede local e ajusta o `IPAddressPool`; em aceite/produção, use uma
+faixa reservada e documentada no IPAM.
 
-## 📂 Estrutura do Repositório
+## Deploy
 
-```bash
-metallb-gitops/
-├── base/                          # Manifests genéricos
-│   ├── kustomization.yaml
-│   ├── namespace.yaml             # Namespace metallb-system
-│   ├── operatorgroup.yaml         # OperatorGroup para OLM
-│   ├── subscription.yaml          # Subscription do MetalLB Operator
-│   ├── metallb.yaml               # CR que habilita o MetalLB
-│   ├── addresspool.yaml           # Faixa de IPs (LoadBalancer)
-│   └── l2advertisement.yaml       # Anúncio L2
-└── overlays/
-    └── cluster/
-        └── kustomization.yaml     # Overlay único para todo o cluster
-```
-
----
-
-## 🚀 Deploy com Argo CD
-
-1. Crie a **Application** no Argo CD:
-
-```yaml
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: metallb-cluster
-  namespace: openshift-gitops
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
-spec:
-  project: default
-  source:
-    repoURL: https://github.com/thiagobotelho/metallb-gitops.git
-    targetRevision: main
-    path: overlays/desenvolvimento
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: metallb-system
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
-      - PrunePropagationPolicy=foreground
-      - PruneLast=true
-```
-
-2. Sincronize a Application pelo Argo CD (UI ou CLI):
+Este repositório é consumido pelo app-of-apps do `argocd-gitops`. Para aplicar
+manualmente em laboratório:
 
 ```bash
-argocd app sync metallb-cluster
+oc apply -k overlays/desenvolvimento
 ```
 
----
+Para ambientes não locais, revise o `IPAddressPool.spec.addresses` antes de
+sincronizar:
 
-## 🛠️ Validação
+```bash
+oc kustomize overlays/aceite >/tmp/metallb-aceite.yaml
+oc kustomize overlays/producao >/tmp/metallb-prod.yaml
+```
 
-Verifique os pods no namespace `metallb-system`:
+## Estrutura
+
+```text
+base/                         namespaces, OLM, MetalLB CR, pool e anúncio L2
+overlays/desenvolvimento/     perfil CRC com configuração automática do pool
+overlays/aceite/              homologação com placeholders para faixa reservada
+overlays/producao/            produção com placeholders para faixa reservada
+docs/                         documentação operacional por ambiente
+```
+
+## Validação
 
 ```bash
 oc -n metallb-system get pods
+oc -n metallb-system get metallb,ipaddresspools,l2advertisements
+oc get svc -A --field-selector spec.type=LoadBalancer
 ```
 
-Listar os pools e anúncios configurados:
+Um Service `LoadBalancer` deve receber um `EXTERNAL-IP` dentro da faixa
+configurada no `IPAddressPool`.
 
-```bash
-oc -n metallb-system get ipaddresspools
-oc -n metallb-system get l2advertisements
-```
+## Segurança e operação
 
----
-
-## 🔍 Teste de Service LoadBalancer
-
-Crie um Service simples para validar o pool de IPs:
-
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: nginx-lb
-  namespace: default
-spec:
-  selector:
-    app: nginx
-  ports:
-    - port: 80
-      targetPort: 80
-  type: LoadBalancer
-```
-
-Após aplicar, verifique o IP externo atribuído:
-
-```bash
-oc get svc nginx-lb -n default
-```
-
-Se configurado corretamente, o campo **EXTERNAL-IP** estará em algum IP do range definido no `addresspool.yaml`.
-
----
-
-## 📌 Boas práticas corporativas
-
-- **Reserva de IPs**: mantenha documentação dos IPs utilizados no `IPAddressPool` para evitar conflito com DHCP.  
-- **Overlay único**: apenas um overlay (`cluster`) é necessário, já que o MetalLB é único por cluster.  
-- **Governança RBAC**: conceda permissões apenas ao Argo CD Application Controller via `ClusterRoleBinding`.  
-- **Alta disponibilidade**: use pelo menos 2 réplicas para o Speaker em clusters de produção.
-
----
-
-## 📚 Referências
-
-- [MetalLB Operator no OperatorHub](https://operatorhub.io/operator/metallb-operator)
-- [Documentação oficial do MetalLB](https://metallb.universe.tf/)
+- reserve a faixa de IPs fora do DHCP;
+- mantenha a faixa documentada no IPAM do ambiente;
+- evite compartilhar a mesma faixa entre clusters;
+- revise permissões do Argo CD e do Operator antes de produção;
+- valide ARP/NDP e conectividade L2 na rede local;
+- use mais de um nó em produção para alta disponibilidade real do speaker.
 
 ## Ambientes e validação
 
@@ -155,3 +80,8 @@ A base usa range RFC 5737 como placeholder. No CRC, o Job
 `address-pool-configurator` calcula o prefixo a partir do IP do nó. Em aceite e
 produção, substitua `IPAddressPool.spec.addresses` por faixa reservada do
 ambiente e documente no IPAM. Veja `docs/AMBIENTES.md`.
+
+## Referências
+
+- [MetalLB Operator no OperatorHub](https://operatorhub.io/operator/metallb-operator)
+- [Documentação oficial do MetalLB](https://metallb.universe.tf/)
