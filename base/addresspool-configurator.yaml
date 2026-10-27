@@ -3,7 +3,6 @@ kind: ServiceAccount
 metadata:
   name: address-pool-configurator
   # Namespace deste objeto; não confundir com seleção de namespaces de origem.
-  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
   namespace: metallb-system
   annotations:
     argocd.argoproj.io/sync-wave: "2"
@@ -18,7 +17,6 @@ metadata:
 rules:
   - apiGroups:
       - metallb.io
-    # Recursos ou dependências desta seção; avaliar seu escopo antes de alterar.
     # Recursos ou dependências desta seção; avaliar seu escopo antes de alterar.
     resources:
       - ipaddresspools
@@ -36,12 +34,10 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "2"
 # Identidades que recebem as permissões declaradas pelo papel referenciado.
-# Identidades que recebem as permissões declaradas pelo papel referenciado.
 subjects:
   - kind: ServiceAccount
     name: address-pool-configurator
     namespace: metallb-system
-# Referência de permissão; este vínculo não cria identidades no provedor.
 # Referência de permissão; este vínculo não cria identidades no provedor.
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -67,6 +63,8 @@ spec:
           image: registry.access.redhat.com/ubi9/ubi-minimal:9.6
           imagePullPolicy: IfNotPresent
           env:
+            - name: POOL_MODE
+              value: explicit
             - name: POOL_ADDRESSES
               valueFrom:
                 configMapKeyRef:
@@ -86,8 +84,46 @@ spec:
             - -ec
           args:
             - |
-              # A configuração deve ser provisionada por ambiente fora do Git público.
-              [ "$POOL_CONFIRMED" = true ] || { echo "Faixa não confirmada no IPAM/DHCP" >&2; exit 1; }
+              case "${POOL_MODE:-explicit}" in
+                crc)
+                  # Perfil local: reproduz o pool .200-.250 pelo IPv4 do nó.
+                  # Esse cálculo segue a convenção do CRC; não consulta DHCP/IPAM.
+                  case "${HOST_IP:-}" in
+                    ''|*[!0-9.]*) echo "IPv4 do nó inválido" >&2; exit 1 ;;
+                  esac
+                  set -f
+                  PREVIOUS_IFS="$IFS"
+                  IFS=.
+                  set -- $HOST_IP
+                  IFS="$PREVIOUS_IFS"
+                  [ "$#" -eq 4 ] || exit 1
+                  PREFIX=
+                  INDEX=0
+                  for OCTET in "$@"; do
+                    [ -n "$OCTET" ] && [ "${#OCTET}" -le 3 ] || exit 1
+                    OCTET="${OCTET#0}"
+                    OCTET="${OCTET#0}"
+                    OCTET="${OCTET:-0}"
+                    [ "$OCTET" -le 255 ] || exit 1
+                    INDEX=$((INDEX + 1))
+                    if [ "$INDEX" -le 3 ]; then
+                      PREFIX="${PREFIX:+$PREFIX.}$OCTET"
+                    else
+                      [ "$OCTET" -gt 0 ] && [ "$OCTET" -lt 255 ] || exit 1
+                      if [ "$OCTET" -ge 200 ] && [ "$OCTET" -le 250 ]; then
+                        echo "IPv4 do nó conflita com o pool automático" >&2
+                        exit 1
+                      fi
+                    fi
+                  done
+                  POOL_ADDRESSES="${PREFIX}.200-${PREFIX}.250"
+                  ;;
+                explicit)
+                  # Outros ambientes exigem entrada confirmada fora do Git.
+                  [ "${POOL_CONFIRMED:-}" = true ] || { echo "Faixa não confirmada no IPAM/DHCP" >&2; exit 1; }
+                  ;;
+                *) echo "Modo de configuração inválido" >&2; exit 1 ;;
+              esac
               # Aceita uma faixa IPv4, sem espaços ou caracteres de injeção JSON.
               case "$POOL_ADDRESSES" in
                 ''|*[!0-9.-]*) echo "Formato de faixa inválido" >&2; exit 1 ;;
@@ -135,7 +171,6 @@ spec:
 
               echo
               echo "Configured MetalLB address pool: $ADDRESSES"
-          # Restringe privilégios do processo; conferir compatibilidade com a SCC.
           # Restringe privilégios do processo; conferir compatibilidade com a SCC.
           securityContext:
             allowPrivilegeEscalation: false

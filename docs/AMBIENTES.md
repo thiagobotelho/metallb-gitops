@@ -2,9 +2,9 @@
 
 Este repositório usa `base/` e `overlays/{desenvolvimento,aceite,producao}`.
 
-- `desenvolvimento`: perfil CRC com Job `address-pool-configurator` que ajusta o pool usando o IP do nó.
-- `aceite`: substitua o range do `IPAddressPool` por faixa reservada do ambiente.
-- `producao`: planeje pools, BGP/L2, monitoramento e risco de conflito com DHCP/IPAM.
+- `desenvolvimento`: perfil CRC automático. O Job usa o IPv4 do nó para configurar .200-.250, sem exigir metallb-pool-input.
+- `aceite`: configure metallb-pool-input com faixa reservada e confirmed=true; modo explicit.
+- `producao`: mantém entrada explícita; planeje pools, BGP/L2, monitoramento e reserva DHCP/IPAM.
 
 Validação:
 

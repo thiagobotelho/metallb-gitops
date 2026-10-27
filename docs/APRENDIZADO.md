@@ -1,16 +1,13 @@
-# Endereçamento explícito
+# Entender a configuração
 
-## O que observar
+No CRC, o caminho é App-of-Apps → Application MetalLB → Operator/recursos → Job → IPAddressPool. O campo status.hostIP do Downward API informa o IPv4 do nó ao Job; o shell valida os octetos e constrói o intervalo .200-.250 usando os três primeiros octetos. Isso segue a convenção do laboratório, sem descobrir máscara ou reserva DHCP.
 
-Configure metallb-pool-input com uma faixa reservada e confirmação explícita. A descoberta do host não comprova reserva DHCP. IPAddressPool atribui endereços; L2Advertisement controla anúncio. Um formato válido não prova ausência de conflito; valide no IPAM antes de sincronizar.
+O patch em overlays/desenvolvimento/addresspool-configurator-crc.yaml substitui a lista env do container: POOL_MODE=crc, HOST_IP pelo Downward API e POD_NAMESPACE. Por isso não há ConfigMap obrigatório nesse perfil. Aceite e produção mantêm POOL_MODE=explicit e referências ao ConfigMap metallb-pool-input.
 
-## Roteiro de leitura e validação
+O Role permite somente get/patch do IPAddressPool lb-pool no namespace metallb-system. O Job não lista nós, lê Secrets de usuários nem altera outros pools. A credencial da ServiceAccount é usada apenas para o PATCH autenticado na API.
 
-1. Leia o README e identifique o componente que recebe a configuração.
-2. Confira namespaces, seletores, portas, identidades e dependências nos exemplos.
-3. Ajuste apenas os campos necessários em um ambiente isolado; não use credenciais de produção.
-4. Valide sintaxe e contratos locais antes de aplicar. Registre o resultado real separado deste guia.
-5. Execute um caso permitido e um caso negado, conferindo a causa da resposta.
-6. Defina reversão por recurso/arquivo e preserve dados persistentes antes de mudanças.
+IPAddressPool define os endereços disponíveis; L2Advertisement habilita seu anúncio. Um pool configurado não comprova conectividade. Teste atribuição de IP e acesso ao Service separadamente.
 
-Os comentários dos manifests explicam escolhas; não comprovam disponibilidade do componente. Exemplos fora de entradas Kustomize não são implantados automaticamente.
+Testes negativos: IPv6 ou IPv4 inválido, nó dentro da faixa automática e modo desconhecido devem falhar antes do PATCH. No modo explícito, confirmação false e faixa invertida também devem falhar. Os testes offline usam apenas endereços de documentação.
+
+Para reverter a implementação, reverta o commit pelo Git e sincronize a Application. Para mudar endereços em uso, inventarie os Services e planeje migração; não exclua o pool como atalho.
