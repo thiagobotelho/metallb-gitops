@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: address-pool-configurator
+  namespace: metallb-system
+spec:
+  template:
+    spec:
+      containers:
+        - name: configure
+          env:
+            # Substitui as referências obrigatórias ao ConfigMap apenas no CRC.
+            - $patch: replace
+            - name: POOL_MODE
+              value: crc
+            - name: HOST_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
