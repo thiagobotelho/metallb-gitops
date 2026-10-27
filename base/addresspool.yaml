@@ -2,14 +2,14 @@ apiVersion: metallb.io/v1beta1
 kind: IPAddressPool
 metadata:
   name: lb-pool
+  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
+  # Namespace deste objeto; não confundir com seleção de namespaces de origem.
   namespace: metallb-system
   annotations:
     argocd.argoproj.io/sync-wave: "2"
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   addresses:
-    # Bootstrap documentation range (RFC 5737). In desenvolvimento/CRC the
-    # address-pool-configurator Job replaces the prefix at runtime using the
-    # node IP. For aceite/producao, patch this value with a reserved pool.
+    # Placeholder RFC 5737: substituir apenas por faixa reservada e confirmada.
     - 192.0.2.200-192.0.2.250
   autoAssign: true
