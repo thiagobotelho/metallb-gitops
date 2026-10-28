@@ -11,3 +11,5 @@ IPAddressPool define os endereços disponíveis; L2Advertisement habilita seu an
 Testes negativos: IPv6 ou IPv4 inválido, nó dentro da faixa automática e modo desconhecido devem falhar antes do PATCH. No modo explícito, confirmação false e faixa invertida também devem falhar. Os testes offline usam apenas endereços de documentação.
 
 Para reverter a implementação, reverta o commit pelo Git e sincronize a Application. Para mudar endereços em uso, inventarie os Services e planeje migração; não exclua o pool como atalho.
+
+Para diagnóstico, diferencie atribuição de endereço, anúncio L2 e alcance do cliente. HTTP 403 do Envoy é uma decisão de aplicação/mesh, sem implicar falha do pool. Mantenha a instalação da stack em argocd-gitops e a configuração de IPs neste repositório.
